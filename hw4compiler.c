@@ -390,6 +390,8 @@ int main(int argc, char *argv[])
   // Read in tokens in the tokens list and generate code
   program();
 
+  print_symbol_table();
+
   destroy_list(token_list); // Free memory used by token list
   fclose(input_file);       // Close input file
   fclose(output_file);      // Close output file
@@ -704,12 +706,12 @@ void error(int error_code)
   exit(1);
 }
 
-// Check if a symbol is in the symbo l table
+// Check if a symbol is in the symbol table
 int check_symbol_table(char *string)
 {
   for (int i = 0; i < tx; i++)
   {
-    if (strcmp(string, symbol_table[i].name) == 0)
+    if (strcmp(string, symbol_table[i].name) == 0 && symbol_table[i].mark == 0)
     {
       return i;
     }
@@ -747,12 +749,14 @@ void block()
   level++;
   int prev_tx = tx;
   int space = 4;
-  int jump_addr = emit(7, 0, cx * 3); // Emit JMP instruction
-  const_declaration();                // Parse constants
-  space += var_declaration();         // Parse variables
-  emit(6, 0, space);
+  int jump_addr = emit(7, 0, 0); // Emit JMP instruction
+  const_declaration();           // Parse constants
+  space += var_declaration();    // Parse variables
+  printf("current level: %d\n", level);
+  print_symbol_table();
   procedure();                // Parse procedure
   code[jump_addr].m = 3 * cx; // Set JMP instruction's M to current code index
+  emit(6, 0, space);          // Emit INC instruction
   statement();                // Parse statement
   emit(2, 0, 0);              // Emit OPR instruction
   tx = prev_tx;
@@ -777,6 +781,7 @@ void procedure()
     }
 
     get_next_token();
+
     block();                                       // Parse block
     if (atoi(current_token.value) != semicolonsym) // Check if next token is a semicolon
     {
@@ -1111,13 +1116,15 @@ void print_symbol_table()
   print_both("%10s | %10s | %10s | %10s | %10s | %10s\n", "Kind", "Name", "Value", "Level", "Address", "Mark", "\n");
   print_both("    -----------------------------------------------------------------------\n");
 
-  for (int i = 0; i < tx; i++)
+  for (int i = 0; i < MAX_SYMBOL_TABLE_SIZE; i++)
   {
-    symbol_table[i].mark = 1;
+    if (symbol_table[i].kind == 0)
+      continue;
+
+    // symbol_table[i].mark = 1;
     if (symbol_table[i].kind == 1)
       print_both("%10d | %10s | %10d | %10s | %10s | %10d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, "-", "-", symbol_table[i].mark);
     else
-
       print_both("%10d | %10s | %10d | %10d | %10d | %10d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, symbol_table[i].level, symbol_table[i].addr, symbol_table[i].mark);
   }
 }
@@ -1174,7 +1181,6 @@ void get_op_name(int op, char *name)
 void print_elf_file()
 {
   FILE *elf_file = fopen("elf.txt", "w");
-  fprintf(elf_file, "%d\n", cx);
   for (int i = 0; i < cx; i++)
   {
     fprintf(elf_file, "%d %d %d\n", code[i].op, code[i].l, code[i].m);
