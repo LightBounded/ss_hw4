@@ -1,4 +1,4 @@
-// Out of scope case
+
 const n = 13;
 var i, h;
 procedure sub;
@@ -10,8 +10,8 @@ procedure sub;
         h := k;
     end;
 begin
-    j := 5;
     i := 3;
     h := 9;
     call sub;
+    j := 5;
 end. 
