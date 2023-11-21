@@ -667,7 +667,7 @@ void error(int error_code)
     print_both("constants must be assigned an integer value\n");
     break;
   case 6:
-    print_both("constant and variables declarations must be followed by a semicolon\n");
+    print_both("constant, variables, and procedure declarations must be followed by a semicolon\n");
     break;
   case 7:
     print_both("undeclared or out of scope identifier %s\n", current_token.lexeme);
