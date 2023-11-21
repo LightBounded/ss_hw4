@@ -1,17 +1,21 @@
-
-const n = 13;
-var i, h;
-procedure sub;
-    const k = 7;
-    var j, h;
+var f, n;
+procedure fact;
+    var ans1;
     begin
-        j := n;
-        i := 1;
-        h := k;
+        ans1:=n;
+        n:= n-1;
+        if n = 0 then f := 1;
+        if n > 0 then call fact;
+        f:=f*ans1;
     end;
+
+procedure square;
+    begin
+      ans1 := n * n;
+    end;
+
 begin
-    i := 3;
-    h := 9;
-    call sub;
-    j := 5;
-end. 
+    n:=3;
+    call square;
+    write f
+end.
