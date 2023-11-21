@@ -698,8 +698,12 @@ void error(int error_code)
     break;
   case 16:
     print_both("program too long\n");
+    break;
   case 17:
-    print_both("call must be followed by a procedure identifier\n");
+    print_both("call must be followed by an identifier\n");
+    break;
+  case 18:
+    print_both("cannot call variable or constant\n");
   }
 
   exit(1);
@@ -903,7 +907,7 @@ void statement()
     get_next_token();
     if (atoi(current_token.value) != identsym) // Check if next token is an identifier
     {
-      error(2); // Error if it isn't
+      error(17); // Error if it isn't
     }
     int i = check_symbol_table(current_token.lexeme, 0); // Check if identifier is in symbol table
     if (i == -1)
@@ -912,7 +916,7 @@ void statement()
     }
     if (symbol_table[i].kind != 3) // Check if identifier is a procedure
     {
-      error(17); // Error if it isn't
+      error(18); // Error if it isn't
     }
     emit(5, level - symbol_table[i].level, symbol_table[i].addr); // Emit CAL instruction
     get_next_token();
