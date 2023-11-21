@@ -90,7 +90,8 @@ instruction code[MAX_INSTRUCTION_LENGTH];   // Global code array
 int cx = 0;                                 // Code index
 int tx = 0;                                 // Symbol table index
 int level = -1;                             // Current level
-int space = 0;                              // Space for variables
+int dx = 4;                                 // Space for variables
+int prev_tx = 0;                            // Previous symbol table index
 
 // Function prototypes
 char peekc();
@@ -421,6 +422,7 @@ void print_both(const char *format, ...)
 // Print the entire source code from the input file to both the console and the output file
 void print_source_code()
 {
+  rewind(input_file); // Reset file pointer to the beginning of the file
   char c;
   char lastChar = 0; // To keep track of the last character printed
   while ((c = fgetc(input_file)) != EOF)
@@ -742,6 +744,8 @@ void program()
     error(1); // Error if it doesn't
   }
   emit(9, 0, 3); // Emit halt instruction
+  print_source_code();
+  printf("No errors, program is syntactically correct.\n");
   print_elf_file();
   print_symbol_table();
 }
@@ -749,9 +753,9 @@ void program()
 void block()
 {
   level++;
-  int prev_tx = tx;
+  prev_tx = tx;
+  dx = 4;
   int jump_addr = cx;
-  int space = 4;
 
   emit(7, 0, 0); // Emit JMP instruction
 
@@ -759,10 +763,9 @@ void block()
   var_declaration();   // Parse variables
   procedure();         // Parse procedure
 
-  code[jump_addr].m = 3 * cx; // Set JMP instruction's M to current code index
-
-  emit(6, 0, space); // Emit INC instruction
-  statement();       // Parse statement
+  code[jump_addr].m = cx * 3; // Set JMP instruction's M to current code index
+  emit(6, 0, dx); // Emit INC instruction
+  statement();    // Parse statement
 
   if (level > 0)
     emit(2, 0, 0);
@@ -781,8 +784,7 @@ void procedure()
       error(2); // Error if it isn't
     }
 
-    add_symbol(3, current_token.lexeme, 0, level, cx * 6, 0); // Add procedure to symbol table
-
+    add_symbol(3, current_token.lexeme, 0, level, 6 * cx, 0); // Add procedure to symbol table
     get_next_token();
     if (atoi(current_token.value) != semicolonsym) // Check if next token is a semicolon
     {
@@ -848,6 +850,7 @@ int var_declaration()
   {
     do
     {
+      num_vars++; // Increment number of variables
       get_next_token();
       if (atoi(current_token.value) != identsym) // Check if next token is an identifier
       {
@@ -857,8 +860,7 @@ int var_declaration()
       {
         error(3); // Error if it has
       }
-      add_symbol(2, current_token.lexeme, 0, 0, num_vars + 3, 0); // Add variable to symbol table
-      num_vars++;                                            // Increment number of variables
+      add_symbol(2, current_token.lexeme, 0, level, num_vars + 2, 0); // Add variable to symbol table
       get_next_token();
     } while (atoi(current_token.value) == commasym); // Continue parsing variables if next token is a comma
     if (atoi(current_token.value) != semicolonsym)   // Check if next token is a semicolon
@@ -868,7 +870,7 @@ int var_declaration()
     get_next_token();
   }
 
-  return num_vars;   // Return number of variables
+  return num_vars; // Return number of variables
 }
 
 // Parse statements
