@@ -747,7 +747,6 @@ void program()
   print_source_code();
   printf("No errors, program is syntactically correct.\n");
   print_elf_file();
-  print_symbol_table();
 }
 
 void block()
