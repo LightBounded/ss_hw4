@@ -752,10 +752,10 @@ void program()
 
 void block()
 {
-  level++;
-  prev_tx = tx;
-  dx = 4;
-  int jx = cx;
+  level++;      // Increment level
+  prev_tx = tx; // Save previous symbol table index
+  dx = 4;       // Reserve space for return value, static link, dynamic link, and return address
+  int jx = cx;  // Save current code index to jump to
 
   emit(7, 0, 0); // Emit JMP instruction
 
@@ -769,17 +769,17 @@ void block()
     procedure(); // Parse procedures
 
   code[jx].m = cx * 3; // Set JMP instruction's M to current code index
-  emit(6, 0, dx);  // Emit INC instruction
+  emit(6, 0, dx);      // Emit INC instruction
 
   statement(); // Parse statement
 
   if (level > 0)
   {
-    emit(2, 0, 0);
+    emit(2, 0, 0); // Emit RTN instruction
   }
 
-  tx = prev_tx;
-  level--;
+  tx = prev_tx; // Reset symbol table index
+  level--;      // Decrement level
 }
 
 void procedure()
