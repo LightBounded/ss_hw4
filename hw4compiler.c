@@ -912,7 +912,7 @@ void statement()
     }
     if (symbol_table[i].kind != 3) // Check if identifier is a procedure
     {
-      error(16); // Error if it isn't
+      error(17); // Error if it isn't
     }
     emit(5, level - symbol_table[i].level, symbol_table[i].addr); // Emit CAL instruction
     get_next_token();
