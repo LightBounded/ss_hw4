@@ -1,0 +1,16 @@
+const a = 2, b = 3;
+var x, y, z;
+begin
+    /* This code is going to do a bunch of random stuff
+    in the hopes that your code can work... *hopefully */
+    x := a + 5;
+    y := a * (x - b);
+    z := (b + y * x) / 10;
+    read z;
+    if y <> x then
+        write y;
+    if odd y + z then
+        z := y;
+    while z < 3 do
+        z := z + 1;
+end.

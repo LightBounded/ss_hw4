@@ -1,0 +1,9 @@
+const a = 5;
+var x, y, z;
+
+
+begin
+
+  if x = 3 then if y = 2 then if z = 1 then x := y + z;
+
+end.

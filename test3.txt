@@ -1,0 +1,3 @@
+var procedure, call, else, ifel;
+
+call := else + procedure + ifel.
