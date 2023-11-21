@@ -755,20 +755,28 @@ void block()
   level++;
   prev_tx = tx;
   dx = 4;
-  int jump_addr = cx;
+  int jx = cx;
 
   emit(7, 0, 0); // Emit JMP instruction
 
-  const_declaration(); // Parse constants
-  var_declaration();   // Parse variables
-  procedure();         // Parse procedure
+  if (atoi(current_token.value) == constsym)
+    const_declaration(); // Parse constants
 
-  code[jump_addr].m = cx * 3; // Set JMP instruction's M to current code index
-  emit(6, 0, dx); // Emit INC instruction
-  statement();    // Parse statement
+  if (atoi(current_token.value) == varsym)
+    dx += var_declaration(); // Parse variables
+
+  while (atoi(current_token.value) == procsym)
+    procedure(); // Parse procedures
+
+  code[jx].m = cx * 3; // Set JMP instruction's M to current code index
+  emit(6, 0, dx);  // Emit INC instruction
+
+  statement(); // Parse statement
 
   if (level > 0)
+  {
     emit(2, 0, 0);
+  }
 
   tx = prev_tx;
   level--;
@@ -784,7 +792,7 @@ void procedure()
       error(2); // Error if it isn't
     }
 
-    add_symbol(3, current_token.lexeme, 0, level, 6 * cx, 0); // Add procedure to symbol table
+    add_symbol(3, current_token.lexeme, 0, level, cx * 3, 0); // Add procedure to symbol table
     get_next_token();
     if (atoi(current_token.value) != semicolonsym) // Check if next token is a semicolon
     {
@@ -806,69 +814,64 @@ void procedure()
 void const_declaration()
 {
   char name[MAX_IDENTIFIER_LENGTH + 1]; // Track name of constant
-  // Check if current token is a const
-  if (atoi(current_token.value) == constsym)
+                                        // Check if current token is a const
+  do
   {
-    do
+    get_next_token();
+    if (atoi(current_token.value) != identsym) // Check if next token is an identifier
     {
-      get_next_token();
-      if (atoi(current_token.value) != identsym) // Check if next token is an identifier
-      {
-        error(2); // Error if it isn't
-      }
-      strcpy(name, current_token.lexeme);                    // Save name of constant
-      if (check_symbol_table(current_token.lexeme, 1) != -1) // Check if constant has already been declared
-      {
-        error(3); // Error if it has
-      }
-      get_next_token();
-      if (atoi(current_token.value) != eqsym) // Check if next token is an equals sign
-      {
-        error(4); // Error if it isn't
-      }
-      get_next_token();
-      if (atoi(current_token.value) != numbersym) // Check if next token is a number
-      {
-        error(5); // Error if it isn't
-      }
-      add_symbol(1, name, atoi(current_token.lexeme), level, 0, 0); // Add constant to symbol table
-      get_next_token();
-    } while (atoi(current_token.value) == commasym); // Continue parsing constants if next token is a comma
-    if (atoi(current_token.value) != semicolonsym)   // Check if next token is a semicolon
+      error(2); // Error if it isn't
+    }
+    strcpy(name, current_token.lexeme);                    // Save name of constant
+    if (check_symbol_table(current_token.lexeme, 1) != -1) // Check if constant has already been declared
     {
-      error(6); // Error if it isn't
+      error(3); // Error if it has
     }
     get_next_token();
+    if (atoi(current_token.value) != eqsym) // Check if next token is an equals sign
+    {
+      error(4); // Error if it isn't
+    }
+    get_next_token();
+    if (atoi(current_token.value) != numbersym) // Check if next token is a number
+    {
+      error(5); // Error if it isn't
+    }
+    add_symbol(1, name, atoi(current_token.lexeme), level, 0, 0); // Add constant to symbol table
+    get_next_token();
+  } while (atoi(current_token.value) == commasym); // Continue parsing constants if next token is a comma
+  if (atoi(current_token.value) != semicolonsym)   // Check if next token is a semicolon
+  {
+    error(6); // Error if it isn't
   }
+  get_next_token();
 }
 
 // Parse variables
 int var_declaration()
 {
-  int num_vars = 0;                        // Track number of variables
-  if (atoi(current_token.value) == varsym) // Check if current token is a var
+  int num_vars = 0; // Track number of variables
+  do
   {
-    do
-    {
-      num_vars++; // Increment number of variables
-      get_next_token();
-      if (atoi(current_token.value) != identsym) // Check if next token is an identifier
-      {
-        error(2);
-      }
-      if (check_symbol_table(current_token.lexeme, 1) != -1) // Check if variable has already been declared
-      {
-        error(3); // Error if it has
-      }
-      add_symbol(2, current_token.lexeme, 0, level, num_vars + 2, 0); // Add variable to symbol table
-      get_next_token();
-    } while (atoi(current_token.value) == commasym); // Continue parsing variables if next token is a comma
-    if (atoi(current_token.value) != semicolonsym)   // Check if next token is a semicolon
-    {
-      error(6); // Error if it isn't
-    }
+    num_vars++; // Increment number of variables
     get_next_token();
+    if (atoi(current_token.value) != identsym) // Check if next token is an identifier
+    {
+      error(2);
+    }
+    if (check_symbol_table(current_token.lexeme, 1) != -1) // Check if variable has already been declared
+    {
+      error(3); // Error if it has
+    }
+    add_symbol(2, current_token.lexeme, 0, level, num_vars + 2, 0); // Add variable to symbol table
+
+    get_next_token();
+  } while (atoi(current_token.value) == commasym); // Continue parsing variables if next token is a comma
+  if (atoi(current_token.value) != semicolonsym)   // Check if next token is a semicolon
+  {
+    error(6); // Error if it isn't
   }
+  get_next_token();
 
   return num_vars; // Return number of variables
 }
@@ -893,8 +896,8 @@ void statement()
       error(9); // Error if it isn't
     }
     get_next_token();
-    expression();                      // Parse expression
-    emit(4, 0, symbol_table[sx].addr); // Emit STO instruction
+    expression();                                                   // Parse expression
+    emit(4, level - symbol_table[sx].level, symbol_table[sx].addr); // Emit STO instruction
   }
   else if (atoi(current_token.value) == callsym)
   {
@@ -975,8 +978,8 @@ void statement()
       error(8); // Error if it isn't
     }
     get_next_token();
-    emit(9, 0, 2);  // Emit SIO instruction
-    emit(4, 0, sx); // Emit STO instruction
+    emit(9, 0, 2);      // Emit SIO instruction
+    emit(4, level, sx); // Emit STO instruction
   }
   else if (atoi(current_token.value) == writesym) // Check if current token is a write
   {
