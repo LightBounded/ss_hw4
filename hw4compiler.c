@@ -90,6 +90,7 @@ instruction code[MAX_INSTRUCTION_LENGTH];   // Global code array
 int cx = 0;                                 // Code index
 int tx = 0;                                 // Symbol table index
 int level = -1;                             // Current level
+int space = 0;                              // Space for variables
 
 // Function prototypes
 char peekc();
@@ -108,9 +109,9 @@ void print_tokens(list *l);
 
 // Parser/Codegen function prototypes
 void get_next_token();
-int emit(int op, int l, int m);
+void emit(int op, int l, int m);
 void error(int error_code);
-int check_symbol_table(char *string);
+int check_symbol_table(char *string, int to_add);
 void add_symbol(int kind, char *name, int val, int level, int addr, int mark);
 void program();
 void block();
@@ -390,8 +391,6 @@ int main(int argc, char *argv[])
   // Read in tokens in the tokens list and generate code
   program();
 
-  print_symbol_table();
-
   destroy_list(token_list); // Free memory used by token list
   fclose(input_file);       // Close input file
   fclose(output_file);      // Close output file
@@ -629,7 +628,7 @@ void get_next_token()
 }
 
 // Emit an instruction to the code array
-int emit(int op, int l, int m)
+void emit(int op, int l, int m)
 {
   if (cx > MAX_INSTRUCTION_LENGTH)
   {
@@ -642,8 +641,6 @@ int emit(int op, int l, int m)
     code[cx].m = m;
     cx++;
   }
-
-  return cx - 1;
 }
 
 // Print an error message and exit
@@ -706,12 +703,16 @@ void error(int error_code)
   exit(1);
 }
 
-// Check if a symbol is in the symbol table
-int check_symbol_table(char *string)
+// Find a symbol in the symbol table
+int check_symbol_table(char *string, int to_add)
 {
-  for (int i = 0; i < tx; i++)
+  for (int i = tx - 1; i >= 0; i--)
   {
-    if (strcmp(string, symbol_table[i].name) == 0 && symbol_table[i].mark == 0)
+    if (to_add && strcmp(string, symbol_table[i].name) == 0 && level == symbol_table[i].level)
+    {
+      return i;
+    }
+    else if (!to_add && strcmp(string, symbol_table[i].name) == 0 && symbol_table[i].level <= level)
     {
       return i;
     }
@@ -734,7 +735,7 @@ void add_symbol(int kind, char *name, int val, int level, int addr, int mark)
 // Parse the program
 void program()
 {
-  get_next_token();                           // Get first token
+  get_next_token();
   block();                                    // Parse block
   if (atoi(current_token.value) != periodsym) // Check if program ends with a period
   {
@@ -742,23 +743,30 @@ void program()
   }
   emit(9, 0, 3); // Emit halt instruction
   print_elf_file();
+  print_symbol_table();
 }
 
 void block()
 {
   level++;
   int prev_tx = tx;
+  int jump_addr = cx;
   int space = 4;
-  int jump_addr = emit(7, 0, 0); // Emit JMP instruction
-  const_declaration();           // Parse constants
-  space += var_declaration();    // Parse variables
-  printf("current level: %d\n", level);
-  print_symbol_table();
-  procedure();                // Parse procedure
+
+  emit(7, 0, 0); // Emit JMP instruction
+
+  const_declaration(); // Parse constants
+  var_declaration();   // Parse variables
+  procedure();         // Parse procedure
+
   code[jump_addr].m = 3 * cx; // Set JMP instruction's M to current code index
-  emit(6, 0, space);          // Emit INC instruction
-  statement();                // Parse statement
-  emit(2, 0, 0);              // Emit OPR instruction
+
+  emit(6, 0, space); // Emit INC instruction
+  statement();       // Parse statement
+
+  if (level > 0)
+    emit(2, 0, 0);
+
   tx = prev_tx;
   level--;
 }
@@ -772,7 +780,8 @@ void procedure()
     {
       error(2); // Error if it isn't
     }
-    add_symbol(3, current_token.lexeme, 0, level, cx * 3, 0); // Add procedure to symbol tab  le
+
+    add_symbol(3, current_token.lexeme, 0, level, cx * 6, 0); // Add procedure to symbol table
 
     get_next_token();
     if (atoi(current_token.value) != semicolonsym) // Check if next token is a semicolon
@@ -805,8 +814,8 @@ void const_declaration()
       {
         error(2); // Error if it isn't
       }
-      strcpy(name, current_token.lexeme);                 // Save name of constant
-      if (check_symbol_table(current_token.lexeme) != -1) // Check if constant has already been declared
+      strcpy(name, current_token.lexeme);                    // Save name of constant
+      if (check_symbol_table(current_token.lexeme, 1) != -1) // Check if constant has already been declared
       {
         error(3); // Error if it has
       }
@@ -839,17 +848,17 @@ int var_declaration()
   {
     do
     {
-      num_vars++; // Increment number of variables
       get_next_token();
       if (atoi(current_token.value) != identsym) // Check if next token is an identifier
       {
         error(2);
       }
-      if (check_symbol_table(current_token.lexeme) != -1) // Check if variable has already been declared
+      if (check_symbol_table(current_token.lexeme, 1) != -1) // Check if variable has already been declared
       {
         error(3); // Error if it has
       }
-      add_symbol(2, current_token.lexeme, 0, 0, num_vars + 2, 0); // Add variable to symbol table
+      add_symbol(2, current_token.lexeme, 0, 0, num_vars + 3, 0); // Add variable to symbol table
+      num_vars++;                                            // Increment number of variables
       get_next_token();
     } while (atoi(current_token.value) == commasym); // Continue parsing variables if next token is a comma
     if (atoi(current_token.value) != semicolonsym)   // Check if next token is a semicolon
@@ -858,7 +867,8 @@ int var_declaration()
     }
     get_next_token();
   }
-  return num_vars; // Return number of variables
+
+  return num_vars;   // Return number of variables
 }
 
 // Parse statements
@@ -866,7 +876,7 @@ void statement()
 {
   if (atoi(current_token.value) == identsym) // Check if current token is an identifier
   {
-    int sx = check_symbol_table(current_token.lexeme); // Check if identifier is in symbol table
+    int sx = check_symbol_table(current_token.lexeme, 0); // Check if identifier is in symbol table
     if (sx == -1)
     {
       error(7); // Error if it isn't
@@ -891,7 +901,7 @@ void statement()
     {
       error(2); // Error if it isn't
     }
-    int i = check_symbol_table(current_token.lexeme); // Check if identifier is in symbol table
+    int i = check_symbol_table(current_token.lexeme, 0); // Check if identifier is in symbol table
     if (i == -1)
     {
       error(7); // Error if it isn't
@@ -953,7 +963,7 @@ void statement()
     {
       error(2); // Error if it isn't
     }
-    int sx = check_symbol_table(current_token.lexeme); // Check if identifier is in symbol table
+    int sx = check_symbol_table(current_token.lexeme, 0); // Check if identifier is in symbol table
     if (sx == -1)
     {
       error(7); // Error if it isn't
@@ -1073,7 +1083,7 @@ void factor()
 {
   if (atoi(current_token.value) == identsym) // Check if current token is an identifier
   {
-    int sx = check_symbol_table(current_token.lexeme); // Check if identifier is in symbol table
+    int sx = check_symbol_table(current_token.lexeme, 0); // Check if identifier is in symbol table
     if (sx == -1)
     {
       error(7); // Error if it isn't
@@ -1121,7 +1131,7 @@ void print_symbol_table()
     if (symbol_table[i].kind == 0)
       continue;
 
-    // symbol_table[i].mark = 1;
+    symbol_table[i].mark = 1;
     if (symbol_table[i].kind == 1)
       print_both("%10d | %10s | %10d | %10s | %10s | %10d\n", symbol_table[i].kind, symbol_table[i].name, symbol_table[i].val, "-", "-", symbol_table[i].mark);
     else
