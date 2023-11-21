@@ -670,7 +670,7 @@ void error(int error_code)
     print_both("constant and variables declarations must be followed by a semicolon\n");
     break;
   case 7:
-    print_both("undeclared identifier %s\n", current_token.lexeme);
+    print_both("undeclared or out of scope identifier %s\n", current_token.lexeme);
     break;
   case 8:
     print_both("only variable values may be altered\n");
@@ -704,6 +704,7 @@ void error(int error_code)
     break;
   case 18:
     print_both("cannot call variable or constant\n");
+    break;
   }
 
   exit(1);
