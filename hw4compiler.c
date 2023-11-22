@@ -749,8 +749,13 @@ void program()
     error(1); // Error if it doesn't
   }
   emit(9, 0, 3); // Emit halt instruction
+
+  print_both("Source Program:\n");
   print_source_code();
-  printf("No errors, program is syntactically correct.\n");
+  print_both("\n");
+  print_both("No errors, program is syntactically correct.\n");
+  print_both("\n");
+  print_both("Generated Code:\n");
   print_elf_file();
 }
 
@@ -1209,6 +1214,6 @@ void print_elf_file()
 
   for (int i = 0; i < cx; i++)
   {
-    printf("%d %d %d\n", code[i].op, code[i].l, code[i].m);
+    print_both("%d %d %d\n", code[i].op, code[i].l, code[i].m);
   }
 }
